@@ -182,6 +182,25 @@ test('NHC first-failure pending is bounded by its original complete snapshot', (
   }
 });
 
+test('security advisories published without a travel register warn and name the missing register', () => {
+  const name = 'securityAdvisories';
+  const key = BOOTSTRAP_KEYS[name];
+  const classify = (over) => classifyKey(name, key, { allowOnDemand: false }, makeCtx({
+    strens: { [key]: 4096 },
+    metaValues: { [SEED_META[name].key]: { fetchedAt: NOW - ONE_MIN_MS, recordCount: 228, sourceVersion: 'rss-feeds', ...over } },
+  }));
+  const degraded = classify({
+    sourceState: 'degraded',
+    errorCode: 'ADVISORY_REGISTER_MISSING_AU',
+    failedSources: ['AU'],
+    emptyFeeds: ['Australia DFAT Smartraveller'],
+  });
+  assert.equal(degraded.status, 'SEED_ERROR', 'a US-only level index must not read as healthy');
+  assert.equal(degraded.errorCode, 'ADVISORY_REGISTER_MISSING_AU');
+  assert.equal(__testing__.healthStatusBucket(degraded, NOW), 'warn');
+  assert.equal(classify({ sourceState: 'ok', emptyFeeds: [] }).status, 'OK');
+});
+
 test('natural events accepts a published complete empty aggregate but not a missing key', () => {
   const name = 'naturalEvents';
   const key = BOOTSTRAP_KEYS[name];
@@ -213,6 +232,28 @@ function makeCtx({ strens = {}, errors = {}, metaValues = {}, metaErrors = {}, a
 }
 
 const seedMeta = (over = {}) => JSON.stringify({ fetchedAt: NOW - ONE_MIN_MS, recordCount: 5, ...over });
+
+test('NO2 publication evidence revokes activation grace and zero eligible regions remains valid', () => {
+  const name = 'no2Activity';
+  const key = STANDALONE_KEYS[name];
+  assert.equal(classifyKey(name, key, { allowOnDemand: true }, makeCtx({
+    activationStates: { [name]: false },
+    metaValues: { [SEED_META[name].key]: seedMeta() },
+  })).status, 'EMPTY');
+  for (const [age, status] of [[0, 'OK'], [4321, 'STALE_SEED']]) {
+    assert.equal(classifyKey(name, key, { allowOnDemand: true }, makeCtx({
+      activationStates: { [name]: true },
+      strens: { [key]: 1024 },
+      metaValues: { [SEED_META[name].key]: seedMeta({ fetchedAt: NOW - age * ONE_MIN_MS, recordCount: 0 }) },
+    })).status, status);
+  }
+  assert.equal(classifyKey(name, key, { allowOnDemand: true }, makeCtx({
+    activationStates: { [name]: false },
+  })).status, 'EMPTY_ON_DEMAND');
+  assert.equal(classifyKey(name, key, { allowOnDemand: true }, makeCtx({
+    activationStates: { [name]: true },
+  })).status, 'EMPTY');
+});
 const classifyNewsInsights = (over = {}) => classifyKey(
   'newsInsights',
   BOOTSTRAP_KEYS.newsInsights,
