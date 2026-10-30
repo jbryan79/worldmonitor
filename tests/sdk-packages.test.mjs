@@ -116,7 +116,7 @@ describe('Rust SDK package (sdk/rust → crates.io worldmonitor)', () => {
   it('requires an explicit release dispatch and publishes the verified commit with OIDC', () => {
     const wf = read('.github/workflows/publish-rust.yml');
     assert.match(wf, /workflow_dispatch:/);
-    assert.doesNotMatch(wf, /^  (push|pull_request):/m);
+    assert.doesNotMatch(wf, /^ {2}(push|pull_request):/m);
     assert.match(wf, /dry_run:[\s\S]*?default: true/);
     assert.match(wf, /github\.repository == 'koala73\/worldmonitor' && github\.ref == 'refs\/heads\/main'/);
     assert.match(wf, /git merge-base --is-ancestor HEAD origin\/main/);

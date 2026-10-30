@@ -145,7 +145,7 @@ describe('country view MCP boundary', () => {
     assert.equal(pipe.count, 1);
   });
   const rawBodies = () => ({
-    '/api/seismology/v1/list-earthquakes': { earthquakes: [{ id: 'quake', place: 'United States \"測\" \\ observation', magnitude: 4.5, location: { latitude: 38, longitude: -77 }, occurredAt: 1791000000000, source: 'USGS', category: 'earthquake', sourceUrl: 'https://example.com/quake' }] },
+    '/api/seismology/v1/list-earthquakes': { earthquakes: [{ id: 'quake', place: 'United States "測" \\ observation', magnitude: 4.5, location: { latitude: 38, longitude: -77 }, occurredAt: 1791000000000, source: 'USGS', category: 'earthquake', sourceUrl: 'https://example.com/quake' }] },
     '/api/infrastructure/v1/list-internet-outages': { outages: [] },
     '/api/intelligence/v1/list-security-advisories': { advisories: [], byCountry: {} },
     '/api/thermal/v1/list-thermal-escalations': { clusters: [{ id: 'cluster', countryCode: 'XX', status: 'THERMAL_STATUS_NORMAL', firstDetectedAt: '2026-10-01T00:00:00Z', lastDetectedAt: '2026-10-01T12:00:00Z' }], fetchedAt: '2026-10-01T14:00:00Z', observationWindowHours: 24, sourceVersion: 'thermal-escalation-v1' },
@@ -190,7 +190,7 @@ describe('country view MCP boundary', () => {
   });
   it('measures the dense valid wrapped response separately from the domain-envelope cap', async () => {
     const bodies = rawBodies(); const quake = bodies['/api/seismology/v1/list-earthquakes'].earthquakes[0];
-    bodies['/api/seismology/v1/list-earthquakes'].earthquakes = Array.from({ length: 400 }, (_, index) => ({ ...quake, id: String(index), place: '\"\\測 United States' }));
+    bodies['/api/seismology/v1/list-earthquakes'].earthquakes = Array.from({ length: 400 }, (_, index) => ({ ...quake, id: String(index), place: '"\\測 United States' }));
     globalThis.fetch = async (url, init) => { requests.push({ url: String(url), init }); return Response.json(bodies[new URL(url).pathname]); };
     const { deps } = makeProDeps();
     const opened = await (await handler(proReq('POST', callBody('open_country_brief', { country_code: 'US' })), deps)).json();
@@ -252,7 +252,7 @@ describe('country view MCP boundary', () => {
         if (new URL(url).pathname.includes('list-earthquakes')) {
           if (kind === 'source') return new Response('測'.repeat(174763));
           const quake = bodies['/api/seismology/v1/list-earthquakes'].earthquakes[0];
-          return Response.json({ earthquakes: Array.from({ length: 200 }, (_, index) => ({ ...quake, id: String(index), place: '\"\\測'.repeat(200) })) });
+          return Response.json({ earthquakes: Array.from({ length: 200 }, (_, index) => ({ ...quake, id: String(index), place: '"\\測'.repeat(200) })) });
         }
         return Response.json(bodies[new URL(url).pathname]);
       };
@@ -270,7 +270,7 @@ describe('country view MCP boundary', () => {
   it('preserves source denial when another family overflows the assembled envelope', async () => {
     const bodies = rawBodies();
     const quake = bodies['/api/seismology/v1/list-earthquakes'].earthquakes[0];
-    bodies['/api/seismology/v1/list-earthquakes'].earthquakes = Array.from({ length: 200 }, (_, index) => ({ ...quake, id: String(index), place: '\"\\測'.repeat(200) }));
+    bodies['/api/seismology/v1/list-earthquakes'].earthquakes = Array.from({ length: 200 }, (_, index) => ({ ...quake, id: String(index), place: '"\\測'.repeat(200) }));
     globalThis.fetch = async url => new URL(url).pathname.includes('list-internet-outages')
       ? new Response('Denied', { status: 403 }) : Response.json(bodies[new URL(url).pathname]);
     const result = (await invoke('get_country_brief_section', { section: 'signalsRaw', arguments: { country_code: 'US' } })).body.result.structuredContent;

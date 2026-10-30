@@ -986,7 +986,6 @@ function planOccurrenceRecord({ record, previous, next, prune, occurrences, now,
       }
       pendingRetries.push([field, state]);
     } else if (now - Date.parse(state.deliveredAt ?? state.expiredAt) < DELIVERED_TOMBSTONE_MS) {
-      continue;
     } else {
       prune.push(field);
       counters.pruned += 1;
